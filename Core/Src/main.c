@@ -97,12 +97,33 @@ osThreadId_t ResetGlobalHandle;
 const osThreadAttr_t ResetGlobal_attributes = {
   .name = "ResetGlobal",
   .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityLow,
+  .priority = (osPriority_t) osPriorityIdle,
 };
 /* Definitions for DebounceTask */
 osThreadId_t DebounceTaskHandle;
 const osThreadAttr_t DebounceTask_attributes = {
   .name = "DebounceTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for SemaphoreToggle */
+osThreadId_t SemaphoreToggleHandle;
+const osThreadAttr_t SemaphoreToggle_attributes = {
+  .name = "SemaphoreToggle",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for SemaphoreTogD3 */
+osThreadId_t SemaphoreTogD3Handle;
+const osThreadAttr_t SemaphoreTogD3_attributes = {
+  .name = "SemaphoreTogD3",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityBelowNormal,
+};
+/* Definitions for MutexDash */
+osThreadId_t MutexDashHandle;
+const osThreadAttr_t MutexDash_attributes = {
+  .name = "MutexDash",
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
@@ -165,6 +186,9 @@ void Mutex_CountDownTask(void *argument);
 void UpdateGlobDisplayProcess(void *argument);
 void ResetGlobalTask(void *argument);
 void StartDebounce(void *argument);
+void Semaphore_Toggle_Task(void *argument);
+void Semaphore_Toggle_D3(void *argument);
+void Mutex_Dash_Dis(void *argument);
 void SW_Timer_Countdown(void *argument);
 
 /* USER CODE BEGIN PFP */
@@ -280,6 +304,15 @@ int main(void)
 
   /* creation of DebounceTask */
   DebounceTaskHandle = osThreadNew(StartDebounce, NULL, &DebounceTask_attributes);
+
+  /* creation of SemaphoreToggle */
+  SemaphoreToggleHandle = osThreadNew(Semaphore_Toggle_Task, NULL, &SemaphoreToggle_attributes);
+
+  /* creation of SemaphoreTogD3 */
+  SemaphoreTogD3Handle = osThreadNew(Semaphore_Toggle_D3, NULL, &SemaphoreTogD3_attributes);
+
+  /* creation of MutexDash */
+  MutexDashHandle = osThreadNew(Mutex_Dash_Dis, NULL, &MutexDash_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -429,8 +462,8 @@ static void MX_USART2_UART_Init(void)
 static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
-/* USER CODE BEGIN MX_GPIO_Init_1 */
-/* USER CODE END MX_GPIO_Init_1 */
+  /* USER CODE BEGIN MX_GPIO_Init_1 */
+  /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOC_CLK_ENABLE();
@@ -513,8 +546,8 @@ static void MX_GPIO_Init(void)
   HAL_NVIC_SetPriority(EXTI4_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI4_IRQn);
 
-/* USER CODE BEGIN MX_GPIO_Init_2 */
-/* USER CODE END MX_GPIO_Init_2 */
+  /* USER CODE BEGIN MX_GPIO_Init_2 */
+  /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
@@ -779,6 +812,72 @@ void StartDebounce(void *argument)
   /* USER CODE END StartDebounce */
 }
 
+/* USER CODE BEGIN Header_Semaphore_Toggle_Task */
+/**
+* @brief Function implementing the SemaphoreToggle thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_Semaphore_Toggle_Task */
+void Semaphore_Toggle_Task(void *argument)
+{
+  /* USER CODE BEGIN Semaphore_Toggle_Task */
+  /* Infinite loop */
+  for(;;)
+  {
+   osSemaphoreAcquire(Button_1_SemaphoreHandle, osWaitForever);
+   HAL_GPIO_TogglePin(LED_D4_GPIO_Port,LED_D4_Pin);
+   osDelay(1);
+  }
+  /* USER CODE END Semaphore_Toggle_Task */
+}
+
+/* USER CODE BEGIN Header_Semaphore_Toggle_D3 */
+/**
+* @brief Function implementing the SemaphoreTogD3 thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_Semaphore_Toggle_D3 */
+void Semaphore_Toggle_D3(void *argument)
+{
+  /* USER CODE BEGIN Semaphore_Toggle_D3 */
+  /* Infinite loop */
+  for(;;)
+  {
+	osSemaphoreAcquire(Button_1_SemaphoreHandle, osWaitForever);
+	HAL_GPIO_TogglePin(LED_D3_GPIO_Port,LED_D3_Pin);
+    osDelay(1);
+  }
+  /* USER CODE END Semaphore_Toggle_D3 */
+}
+
+/* USER CODE BEGIN Header_Mutex_Dash_Dis */
+/**
+* @brief Function implementing the MutexDash thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_Mutex_Dash_Dis */
+void Mutex_Dash_Dis(void *argument)
+{
+  /* USER CODE BEGIN Mutex_Dash_Dis */
+  /* Infinite loop */
+  for(;;)
+  {
+
+	   /* This doesn't change the value, it just clears the display  */
+	   /* If asked to display a negative number, the function displays a "--"
+	   */
+	   osMutexWait(UpDownMutexHandle,osWaitForever);
+	   MultiFunctionShield_Display_Two_Digits(-1);
+	   osDelay(200);
+	   osMutexRelease(UpDownMutexHandle);
+	   osDelay(2);
+
+  /* USER CODE END Mutex_Dash_Dis */
+}
+}
 /* SW_Timer_Countdown function */
 void SW_Timer_Countdown(void *argument)
 {
@@ -811,7 +910,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   /* USER CODE BEGIN Callback 0 */
 
   /* USER CODE END Callback 0 */
-  if (htim->Instance == TIM3) {
+  if (htim->Instance == TIM3)
+  {
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
@@ -837,8 +937,7 @@ void Error_Handler(void)
   }
   /* USER CODE END Error_Handler_Debug */
 }
-
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.
